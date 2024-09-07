@@ -16,11 +16,11 @@ async function main() {
   await db.exec(`
     CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        room VARCHAR(6)
+        room VARCHAR(4),
         client_offset TEXT UNIQUE,
         content TEXT
     );
-  `);
+`);
 
   const port = process.argv[2];
   const app = express();
@@ -37,14 +37,49 @@ async function main() {
     res.sendFile(join(__dirname, "script.js"));
   });
 
+  async function displayLatestMessages(socket, socketRoom) {
+    await db.each(
+      "SELECT id, content FROM messages WHERE room = ? ORDER BY id DESC LIMIT 25",
+      socketRoom,
+      (_err, row) => {
+        io.to(socket.id).emit("chat message", row.content, row.id);
+      }
+    );
+  }
+
   io.on("connection", async (socket) => {
+    let socketRoom = "0000";
+    socket.join(socketRoom);
+    try {
+      await displayLatestMessages(socket, socketRoom);
+    } catch (e) {
+      // something went wrong
+    }
+    socket.on("room change", async (code, callback) => {
+      let result;
+      if (!RegExp("^[0-9]{4}$").test(code)) {
+        callback();
+      }
+      socket.leave(socketRoom);
+      socketRoom = code;
+      socket.join(code);
+      console.log(code);
+      try {
+        await displayLatestMessages(socket, socketRoom);
+      } catch (e) {
+        // something went wrong
+      }
+      callback();
+    });
     socket.on("chat message", async (msg, clientOffset, callback) => {
       let result;
+      console.log(socketRoom);
       try {
         result = await db.run(
-          "INSERT INTO messages (content, client_offset) VALUES (?, ?)",
+          "INSERT INTO messages (content, client_offset, room) VALUES (?, ?, ?)",
           msg,
-          clientOffset
+          clientOffset,
+          socketRoom
         );
       } catch (e) {
         if (e.errno === 19 /* SQLITE_CONSTRAINT */) {
@@ -55,12 +90,12 @@ async function main() {
         }
         return;
       }
-      if (msg === "repeat all") {
-        db.each("SELECT * FROM messages", (_err, row) => {
-          socket.emit("chat message", row.content, row.id);
-        });
-      }
-      io.emit("chat message", msg, result.lastID);
+      // if (msg === "roomcodes") {
+      //   db.each("SELECT * FROM messages", (_err, row) => {
+      //     io.to(socket.id).emit("chat message", row.room, row.id);
+      //   });
+      // }
+      io.to(socketRoom).emit("chat message", msg, result.lastID);
       // acknowledge the event
       callback();
     });
@@ -72,7 +107,9 @@ async function main() {
           "SELECT id, content FROM messages WHERE id > ?",
           [socket.handshake.auth.serverOffset || 0],
           (_err, row) => {
-            socket.emit("chat message", row.content, row.id);
+            if (row.room === socketRoom) {
+              io.to(socket.id).emit("chat message", row.content, row.id);
+            }
           }
         );
       } catch (e) {

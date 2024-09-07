@@ -4,7 +4,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
     <title>Socket.IO chat</title>
     <script src="/socket.io/socket.io.js"></script>
-   <script src="./script.js" defer></script>
+    <script src="./script.js" defer></script>
     <style>
       body {
         margin: 0;
@@ -13,7 +13,7 @@
           Helvetica, Arial, sans-serif;
       }
 
-      #form {
+      .form-container {
         background: rgba(0, 0, 0, 0.15);
         padding: 0.25rem;
         position: fixed;
@@ -25,17 +25,26 @@
         box-sizing: border-box;
         backdrop-filter: blur(10px);
       }
-      #input {
+      form{
+        display: flex;
+      }
+      #room{
+        width: 24rem;
+      }
+      #form{
+        flex-grow: 1;
+      }
+      #input, #room-code {
         border: none;
         padding: 0 1rem;
         flex-grow: 1;
         border-radius: 2rem;
         margin: 0.25rem;
       }
-      #input:focus {
+      #input:focus, #room:focus {
         outline: none;
       }
-      #form > button {
+      form button {
         background: #333;
         border: none;
         padding: 0 1rem;
@@ -60,8 +69,13 @@
   </head>
   <body>
     <ul id="messages"></ul>
-    <form id="form" action="">
-      <input id="input" autocomplete="off" /><button>Send</button>
-    </form>
+    <div class="form-container">
+      <form id="form" action="">
+        <input id="input" autocomplete="off" /><button>Send</button>
+      </form>
+      <form id="room" action="">
+        <input id="room-code" autocomplete="off" maxlength="4" minlength="4"/><button>Change Room</button>
+      </form>
+    </div>
   </body>
 </html>
