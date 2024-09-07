@@ -1,5 +1,5 @@
 let counter = 0;
-const roomCode = "0000";
+// const roomCode = "0000";
 
 const socket = io({
   auth: {
@@ -21,7 +21,7 @@ form.addEventListener("submit", (e) => {
   if (input.value) {
     // compute a unique offset
     const clientOffset = `${socket.id}-${counter++}`;
-    socket.emit("chat message", input.value, clientOffset, roomCode);
+    socket.emit("chat message", input.value, clientOffset);
     input.value = "";
   }
 });
